@@ -1,0 +1,24 @@
+# Глобальные настройки пайплайна. Пороги подбираются на открытых данных (scripts/evaluate.py).
+ocr_engine: tesseract          # переопределяется переменной окружения OCR_ENGINE
+ocr_lang: rus
+
+preprocess:
+  enabled: true
+  deskew: true
+  denoise: true
+  clahe: true                  # выравнивание теней и бликов
+  upscale_min_width: 1600      # если снимок уже — увеличиваем
+  binarize: false              # часто ухудшает EasyOCR/Paddle, включайте по метрикам
+
+regulation:
+  file: data/regulations/polozhenie.txt
+  min_relevance: 0.40          # ниже порога -> verdict "no_data"
+
+confidence:
+  min_field: 0.35              # ниже -> поле считается «не найдено»
+
+detectors:
+  stamp_min_blue_ratio: 0.002
+  signature_min_ink_ratio: 0.004
+
+cache_size: 32                 # сколько разобранных документов держим в памяти

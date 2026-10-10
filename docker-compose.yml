@@ -1,0 +1,28 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      - OCR_ENGINE=${OCR_ENGINE:-tesseract}
+    ports:
+      - "8000:8000"
+    volumes:
+      # правки конфигов и Положения подхватываются без пересборки
+      - ./configs:/app/configs
+      - ./data/regulations:/app/data/regulations
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    env_file: .env
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped

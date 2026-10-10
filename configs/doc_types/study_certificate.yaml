@@ -1,0 +1,15 @@
+# Справка об обучении.
+# regulation_refs — ПЛЕЙСХОЛДЕРЫ: замените на реальные пункты Положения организаторов.
+id: study_certificate
+title: Справка об обучении
+keywords: [справка, обучается, обучался, период обучения, направление подготовки]
+fields:
+  - {id: student_name,     label: ФИО студента,           kind: text,   required: true,  anchors: ["ФИО", "студент", "Справка выдана"], regulation_refs: ["3.2"]}
+  - {id: university,       label: Название вуза,          kind: text,   required: true,  anchors: ["университет", "институт", "академия", "вуз"], regulation_refs: ["3.2"]}
+  - {id: program,          label: Направление подготовки, kind: text,   required: true,  anchors: ["направлени", "специальност"], regulation_refs: ["3.2"]}
+  - {id: study_form,       label: Форма обучения,         kind: text,   required: true,  anchors: ["форма обучения", "форме обучения"], regulation_refs: ["3.2"]}
+  - {id: study_period,     label: Период обучения,        kind: period, required: true,  anchors: ["период обучения", "обучается с", "обучался с"], regulation_refs: ["3.2"]}
+  - {id: issue_number,     label: Номер справки,          kind: number, required: true,  anchors: ["№", "номер"], regulation_refs: ["3.4"]}
+  - {id: issue_date,       label: Дата выдачи,            kind: date,   required: true,  anchors: ["дата выдачи", "от", "выдана"], regulation_refs: ["3.4"]}
+  - {id: stamp,            label: Печать,                 kind: bool,   required: true,  detector: stamp,     regulation_refs: ["3.4"]}
+  - {id: signature,        label: Подпись,                kind: bool,   required: true,  detector: signature, anchors: ["подпись"], regulation_refs: ["3.4"]}

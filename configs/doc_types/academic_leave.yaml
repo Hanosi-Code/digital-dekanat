@@ -1,0 +1,11 @@
+id: academic_leave
+title: Заявление на академический отпуск
+keywords: [заявление, академический отпуск, прошу предоставить]
+fields:
+  - {id: student_name,  label: ФИО студента,        kind: text, required: true, anchors: ["ФИО", "студент", "от студента"], regulation_refs: ["5.1"]}
+  - {id: group_course,  label: Группа и курс,       kind: text, required: true, anchors: ["группа", "курс"], regulation_refs: ["5.1"]}
+  - {id: reason,        label: Причина отпуска,     kind: text, required: true, anchors: ["причина", "по причине", "в связи с"], regulation_refs: ["5.2"]}
+  - {id: leave_start,   label: Дата начала отпуска, kind: date, required: true, anchors: ["с ", "начало"], regulation_refs: ["5.2"]}
+  - {id: leave_end,     label: Дата окончания отпуска, kind: date, required: true, anchors: ["по ", "окончание"], regulation_refs: ["5.2"]}
+  - {id: request_date,  label: Дата заявления,      kind: date, required: true, anchors: ["дата"], regulation_refs: ["5.3"]}
+  - {id: signature,     label: Подпись студента,    kind: bool, required: true, detector: signature, anchors: ["подпись"], regulation_refs: ["5.3"]}
