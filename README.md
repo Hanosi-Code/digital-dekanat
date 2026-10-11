@@ -2,7 +2,6 @@
 
 Бот читает фото/скан/PDF студенческого документа, заполняет карточку полей и отвечает на вопрос
 **со ссылкой на пункт Положения**. Если ответа нет в документе и Положении, честно об этом говорит.
-Telegram: @cinv_project_dekanat_bot
 
 ## Архитектура
 
@@ -19,8 +18,8 @@ Telegram ──► bot (aiogram) ──HTTP──► api (FastAPI) ──► cor
 - `src/dekanat/bot` — тонкий клиент Telegram.
 - `configs/doc_types/*.yaml` — типы документов и поля. **Новый тип = новый YAML, без кода.**
 - `configs/settings.yaml` — пороги и флаги предобработки.
-- `data/regulations/polozhenie.txt` — Положение (пока пример, замените на файл организаторов).
-- `scripts/` — `run_batch.py` (results.json), `evaluate.py` (метрики), `build_kb.py` (проверка разбора).
+- `data/regulations/rules.md` — Положение организаторов (база правил).
+- `scripts/` — `run_batch.py` (results.json), `check_kb.py` (проверка разбора Положения). Метрики считает `evaluate.py` организаторов.
 
 ## Быстрый старт
 
@@ -39,6 +38,17 @@ pytest
 uvicorn dekanat.api.main:app --reload
 python -m dekanat.bot.main     # в другом терминале, нужен BOT_TOKEN и API_URL
 ```
+
+## Прогон по документам и проверка
+
+Папку выдачи (`documents.json`, `questions.json`, папка `documents/` с PNG/PDF) положите, например, в `data/open/`:
+
+```bash
+python scripts/run_batch.py --documents data/open/documents.json --questions data/open/questions.json -o results.json
+python scripts/evaluate.py --reference data/eval/reference_results.json --predictions results.json
+```
+
+`pytest tests/test_oracle.py` проверяет всю логику без OCR: эталонные поля -> наши правила -> `evaluate.py` (должно быть 1.0).
 
 ## Что нужно доделать (TODO)
 

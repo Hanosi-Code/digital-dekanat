@@ -7,3 +7,8 @@ def doc_type_keyboard(types: list[dict], with_auto: bool = True) -> InlineKeyboa
         rows.append([InlineKeyboardButton(text="🔍 Определить автоматически",
                                           callback_data="dt:auto")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def check_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="✅ Проверить комплектность", callback_data="check")]])

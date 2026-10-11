@@ -8,3 +8,8 @@ data/raw/*
 data/index/
 outputs/
 .ipynb_checkpoints/
+
+data/open/
+data/results.json
+data/report.json
+data/debug-*.png

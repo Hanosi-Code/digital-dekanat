@@ -16,11 +16,13 @@ CONFIGS = ROOT / "configs"
 class DocField(BaseModel):
     id: str
     label: str
-    kind: Literal["text", "date", "period", "number", "bool"] = "text"
+    kind: Literal["text", "date", "course", "number", "bool"] = "text"
     required: bool = True
-    anchors: list[str] = Field(default_factory=list)
-    detector: Optional[Literal["stamp", "signature"]] = None
-    regulation_refs: list[str] = Field(default_factory=list)
+    anchors: list[str] = Field(default_factory=list)          # "re:..." = регулярное выражение
+    range_anchors: list[str] = Field(default_factory=list)    # якоря периода «с ... по ...»
+    index: int = 0                                            # какая по счёту дата после якоря
+    detector: Optional[Literal["seal", "signature"]] = None
+    regulation_refs: list[str] = Field(default_factory=list)  # "3.1" (в выдаче: "rule:3.1")
 
 
 class DocType(BaseModel):

@@ -1,15 +1,17 @@
-# Справка об обучении.
-# regulation_refs — ПЛЕЙСХОЛДЕРЫ: замените на реальные пункты Положения организаторов.
+# Справка об обучении. Ключи полей и ссылки на пункты — по README и rules.md (разд. 3).
+# anchors — слова перед значением; "re:" — регулярное выражение; range_anchors + index —
+# значение берётся как index-я дата после якоря (для периодов "с ... по ...").
 id: study_certificate
 title: Справка об обучении
-keywords: [справка, обучается, обучался, период обучения, направление подготовки]
+keywords: [справка об обучении, обучается, обучался, направление подготовки, форма обучения, вуза]
 fields:
-  - {id: student_name,     label: ФИО студента,           kind: text,   required: true,  anchors: ["ФИО", "студент", "Справка выдана"], regulation_refs: ["3.2"]}
-  - {id: university,       label: Название вуза,          kind: text,   required: true,  anchors: ["университет", "институт", "академия", "вуз"], regulation_refs: ["3.2"]}
-  - {id: program,          label: Направление подготовки, kind: text,   required: true,  anchors: ["направлени", "специальност"], regulation_refs: ["3.2"]}
-  - {id: study_form,       label: Форма обучения,         kind: text,   required: true,  anchors: ["форма обучения", "форме обучения"], regulation_refs: ["3.2"]}
-  - {id: study_period,     label: Период обучения,        kind: period, required: true,  anchors: ["период обучения", "обучается с", "обучался с"], regulation_refs: ["3.2"]}
-  - {id: issue_number,     label: Номер справки,          kind: number, required: true,  anchors: ["№", "номер"], regulation_refs: ["3.4"]}
-  - {id: issue_date,       label: Дата выдачи,            kind: date,   required: true,  anchors: ["дата выдачи", "от", "выдана"], regulation_refs: ["3.4"]}
-  - {id: stamp,            label: Печать,                 kind: bool,   required: true,  detector: stamp,     regulation_refs: ["3.4"]}
-  - {id: signature,        label: Подпись,                kind: bool,   required: true,  detector: signature, anchors: ["подпись"], regulation_refs: ["3.4"]}
+  - {id: student_name,   label: ФИО студента,                kind: text,   anchors: ["фио студента"], regulation_refs: ["3.1"]}
+  - {id: university,     label: Название вуза,               kind: text,   anchors: ["название вуза"], regulation_refs: ["3.1"]}
+  - {id: program,        label: Направление подготовки,      kind: text,   anchors: ["направление подготовки"], regulation_refs: ["3.1"]}
+  - {id: study_form,     label: Форма обучения,              kind: text,   anchors: ["форма обучения"], regulation_refs: ["3.1"]}
+  - {id: study_start,    label: Начало периода обучения,     kind: date,   anchors: ["начало периода", "начало обучения", "дата начала"], range_anchors: ["период обучения", "срок обучения", "обучается с", "обучался с"], index: 0, regulation_refs: ["3.1"]}
+  - {id: study_end,      label: Окончание периода обучения,  kind: date,   anchors: ["окончание периода", "окончание обучения", "дата окончания"], range_anchors: ["период обучения", "срок обучения", "обучается с", "обучался с"], index: 1, regulation_refs: ["3.1"]}
+  - {id: document_number, label: Номер справки,              kind: number, anchors: ["номер справки", "справка №", "№", "номер"], regulation_refs: ["3.1"]}
+  - {id: issue_date,     label: Дата выдачи,                 kind: date,   anchors: ["дата выдачи", "выдана", "re:№\\s*\\S+\\s+от"], index: 0, regulation_refs: ["3.1"]}
+  - {id: signature_present, label: Подпись сотрудника,       kind: bool,   detector: signature, anchors: ["подпись"], regulation_refs: ["3.2"]}
+  - {id: seal_present,   label: Печать вуза,                 kind: bool,   detector: seal,      regulation_refs: ["3.3"]}

@@ -1,4 +1,4 @@
-# Глобальные настройки пайплайна. Пороги подбираются на открытых данных (scripts/evaluate.py).
+# Глобальные настройки пайплайна. Пороги подбираются на открытых данных (локальная проверка: evaluate.py организаторов).
 ocr_engine: tesseract          # переопределяется переменной окружения OCR_ENGINE
 ocr_lang: rus
 
@@ -11,14 +11,14 @@ preprocess:
   binarize: false              # часто ухудшает EasyOCR/Paddle, включайте по метрикам
 
 regulation:
-  file: data/regulations/polozhenie.txt
-  min_relevance: 0.40          # ниже порога -> verdict "no_data"
+  file: data/regulations/rules.md
+  free_qa: false               # ответы на произвольные вопросы по тексту Положения (в кейсе не нужны)
 
 confidence:
   min_field: 0.35              # ниже -> поле считается «не найдено»
 
 detectors:
   stamp_min_blue_ratio: 0.002
-  signature_min_ink_ratio: 0.004
+  signature_min_ink_ratio: 0.0002
 
 cache_size: 32                 # сколько разобранных документов держим в памяти

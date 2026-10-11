@@ -30,7 +30,10 @@ def load_images(data: bytes, filename: str = "") -> list[np.ndarray]:
 
 
 def _pdf_to_images(data: bytes) -> list[np.ndarray]:
-    import fitz  # PyMuPDF
+    try:
+        import pymupdf as fitz            # новое имя пакета
+    except ImportError:
+        import fitz  # PyMuPDF старых версий
 
     try:
         doc = fitz.open(stream=data, filetype="pdf")

@@ -1,0 +1,15 @@
+# Справка о практике (rules.md, разд. 5).
+id: internship_certificate
+title: Справка о практике
+keywords: [справка о практике, практика, практики, руководитель практики, организация]
+fields:
+  - {id: student_name,      label: ФИО студента,               kind: text,   anchors: ["фио студента"], regulation_refs: ["5.1"]}
+  - {id: organization,      label: Название организации,      kind: text,   anchors: ["название организации"], regulation_refs: ["5.1"]}
+  - {id: internship_start,  label: Дата начала практики,      kind: date,   anchors: ["дата начала практики", "начало практики", "дата начала"], range_anchors: ["срок практики", "сроки практики", "период практики", "проходил практику с", "проходила практику с"], index: 0, regulation_refs: ["5.1"]}
+  - {id: internship_end,    label: Дата окончания практики,   kind: date,   anchors: ["дата окончания практики", "окончание практики", "дата окончания"], range_anchors: ["срок практики", "сроки практики", "период практики", "проходил практику с", "проходила практику с"], index: 1, regulation_refs: ["5.1"]}
+  - {id: supervisor_name,   label: ФИО руководителя практики,  kind: text,   anchors: ["фио руководителя практики"], regulation_refs: ["5.1"]}
+  - {id: grade,             label: Оценка,                     kind: text,   anchors: ["оценка"], regulation_refs: ["5.1"]}
+  - {id: document_number,   label: Номер справки,              kind: number, anchors: ["номер справки", "справка №", "№", "номер"], regulation_refs: ["5.1"]}
+  - {id: issue_date,        label: Дата выдачи,                kind: date,   anchors: ["дата выдачи", "выдана", "re:№\\s*\\S+\\s+от"], index: 0, regulation_refs: ["5.1"]}
+  - {id: signature_present, label: Подпись руководителя,       kind: bool,   detector: signature, anchors: ["подпись"], regulation_refs: ["5.2"]}
+  - {id: seal_present,      label: Печать организации,         kind: bool,   detector: seal,      regulation_refs: ["5.3"]}

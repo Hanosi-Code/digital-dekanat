@@ -1,27 +1,25 @@
+from pathlib import Path
+
+from dekanat.core.config import ROOT, load_doc_types
 from dekanat.core.kb.parser import parse_regulation
-from dekanat.core.kb.retriever import Retriever
 
-TEXT = """
-3.2. Справка должна содержать ФИО студента и период обучения.
-3.4. Справка должна содержать номер и дату выдачи, подпись и печать вуза.
-Справка без печати не принимается.
-5.1. Заявление подаётся на имя ректора.
-"""
+RULES = parse_regulation((ROOT / "data/regulations/rules.md").read_text(encoding="utf-8"))
+IDS = {c.id for c in RULES}
 
 
-def test_parse_multiline():
-    cl = parse_regulation(TEXT)
-    assert [c.id for c in cl] == ["3.2", "3.4", "5.1"]
-    assert "не принимается" in cl[1].text
+def test_all_30_clauses_parsed():
+    assert len(RULES) == 30
+    assert {"1.3", "3.1", "3.4", "4.3", "5.3", "6.3"} <= IDS
 
 
-def test_search_finds_right_clause():
-    kb = Retriever(parse_regulation(TEXT))
-    hits = kb.search("нужна ли печать на справке")
-    assert hits and hits[0].clause.id == "3.4"
+def test_clause_text_not_truncated():
+    c = {c.id: c for c in RULES}
+    assert "сотрудник деканата" in c["1.3"].text
+    assert "печать вуза" in c["3.3"].text.lower()
 
 
-def test_search_unrelated_has_low_coverage():
-    kb = Retriever(parse_regulation(TEXT))
-    hits = kb.search("сколько стоит обучение")
-    assert not hits or hits[0].coverage < 0.4
+def test_config_refs_exist_in_rules():
+    for dt in load_doc_types().values():
+        for f in dt.fields:
+            for r in f.regulation_refs:
+                assert r in IDS, f"{dt.id}.{f.id}: пункта {r} нет в Положении"

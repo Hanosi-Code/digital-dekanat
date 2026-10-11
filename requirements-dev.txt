@@ -1,3 +1,5 @@
 -r requirements-api.txt
 -r requirements-bot.txt
 pytest
+pytest-asyncio
+jsonschema

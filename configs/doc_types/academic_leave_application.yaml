@@ -1,0 +1,13 @@
+# Заявление на академический отпуск (rules.md, разд. 4). Печати в этом типе нет (п. 4.3).
+id: academic_leave_application
+title: Заявление на академический отпуск
+keywords: [заявление, академический отпуск, прошу предоставить, причина отпуска]
+fields:
+  - {id: student_name,    label: ФИО студента,                kind: text,   anchors: ["фио студента"], regulation_refs: ["4.1"]}
+  - {id: group,           label: Учебная группа,              kind: text,   anchors: ["учебная группа"], regulation_refs: ["4.1"]}
+  - {id: course,          label: Курс,                        kind: course, anchors: ["курс"], regulation_refs: ["4.1"]}
+  - {id: leave_reason,    label: Причина отпуска,             kind: text,   anchors: ["причина отпуска"], regulation_refs: ["4.1"]}
+  - {id: leave_start,     label: Дата начала отпуска,         kind: date,   anchors: ["дата начала отпуска", "начало отпуска", "дата начала"], range_anchors: ["на период", "отпуск с", "в период"], index: 0, regulation_refs: ["4.1"]}
+  - {id: leave_end,       label: Дата окончания отпуска,      kind: date,   anchors: ["дата окончания отпуска", "окончание отпуска", "дата окончания"], range_anchors: ["на период", "отпуск с", "в период"], index: 1, regulation_refs: ["4.1"]}
+  - {id: application_date, label: Дата заявления,             kind: date,   anchors: ["дата заявления", "дата подачи", "re:^\\s*дата\\s*:"], index: 0, regulation_refs: ["4.1"]}
+  - {id: signature_present, label: Подпись студента,          kind: bool,   detector: signature, anchors: ["подпись"], regulation_refs: ["4.2"]}

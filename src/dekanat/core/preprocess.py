@@ -6,20 +6,40 @@ import cv2
 import numpy as np
 
 
-def estimate_skew_angle(gray: np.ndarray) -> float:
-    """Угол наклона текста в градусах (±45). 0.0, если уверенно определить не удалось."""
-    inv = cv2.bitwise_not(gray)
-    thr = cv2.threshold(inv, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    coords = np.column_stack(np.where(thr > 0))
-    if len(coords) < 500:
+def _row_score(mask: np.ndarray, angle: float) -> float:
+    h, w = mask.shape
+    m = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1.0)
+    rot = cv2.warpAffine(mask, m, (w, h), flags=cv2.INTER_NEAREST)
+    prof = rot.sum(axis=1, dtype=np.float64) / 255.0
+    return float(np.sum(prof * prof))              # максимум, когда строки текста горизонтальны
+
+
+def estimate_skew_angle(gray: np.ndarray, max_angle: float = 35.0) -> float:
+    """Угол поворота (градусы), который нужно применить к снимку, чтобы строки стали горизонтальными.
+
+    Метод профиля проекций по компонентам размера «буква»: крупные объекты (печать, рамки, тени)
+    отбрасываются, поэтому они не сбивают оценку. 0.0, если текст уже ровный или оценка ненадёжна."""
+    h, w = gray.shape[:2]
+    k = 900.0 / max(h, w)
+    small = cv2.resize(gray, None, fx=k, fy=k, interpolation=cv2.INTER_AREA) if k < 1 else gray
+    inv = cv2.bitwise_not(small)
+    bw = cv2.threshold(inv, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(bw, connectivity=8)
+    H, W = bw.shape
+    keep_ids = (stats[:, cv2.CC_STAT_HEIGHT] < 0.06 * H) & (stats[:, cv2.CC_STAT_WIDTH] < 0.15 * W) \
+        & (stats[:, cv2.CC_STAT_AREA] >= 4)
+    keep_ids[0] = False
+    mask = (keep_ids[labels].astype(np.uint8)) * 255
+    if mask.sum() / 255 < 200:
         return 0.0
-    angle = cv2.minAreaRect(coords[:, ::-1].astype(np.float32))[-1]
-    # приводим к диапазону (-45, 45]
-    if angle > 45:
-        angle -= 90
-    elif angle < -45:
-        angle += 90
-    return float(angle)
+
+    base = _row_score(mask, 0.0)
+    coarse = max(((_row_score(mask, a), a) for a in np.arange(-max_angle, max_angle + 0.01, 1.0)))
+    fine = max(((_row_score(mask, a), a) for a in np.arange(coarse[1] - 1.0, coarse[1] + 1.01, 0.2)))
+    best_score, best_angle = fine
+    if best_score < base * 1.02:                    # улучшения нет -> считаем текст ровным
+        return 0.0
+    return float(best_angle)
 
 
 def rotate(img: np.ndarray, angle: float) -> np.ndarray:
@@ -43,7 +63,7 @@ def preprocess(img: np.ndarray, cfg: dict) -> np.ndarray:
     if cfg.get("deskew", True):
         gray = cv2.cvtColor(out, cv2.COLOR_BGR2GRAY)
         angle = estimate_skew_angle(gray)
-        if 0.3 < abs(angle) <= 35:
+        if 0.5 < abs(angle) <= 35:
             out = rotate(out, angle)
 
     if cfg.get("denoise", True):

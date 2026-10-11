@@ -1,7 +1,7 @@
 """Единый интерфейс OCR. Любой движок возвращает слова с рамками и уверенностью."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 import numpy as np
@@ -20,6 +20,7 @@ class Line:
     text: str
     bbox: tuple[int, int, int, int]
     conf: float
+    words: list = field(default_factory=list)   # слова строки (для точных рамок)
 
 
 class OCREngine(Protocol):
@@ -40,6 +41,6 @@ def group_lines(words: list[Word]) -> list[Line]:
         x2 = max(w.bbox[2] for w in ws)
         y2 = max(w.bbox[3] for w in ws)
         lines.append(Line(" ".join(w.text for w in ws), (x1, y1, x2, y2),
-                          sum(w.conf for w in ws) / len(ws)))
+                          sum(w.conf for w in ws) / len(ws), list(ws)))
     lines.sort(key=lambda l: (l.bbox[1], l.bbox[0]))
     return lines

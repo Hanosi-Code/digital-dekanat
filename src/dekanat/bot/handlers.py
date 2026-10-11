@@ -22,12 +22,13 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, ErrorEvent, Message
 
 from .formatter import format_answer, format_card
-from .keyboards import doc_type_keyboard
+from .keyboards import check_keyboard, doc_type_keyboard
 
 log = logging.getLogger(__name__)
 API_URL = os.environ.get("API_URL", "http://localhost:8000")
 router = Router()
 
+CHECK_QUESTION = "Содержит ли документ все обязательные сведения по Положению?"
 HINT = "Нажмите /start, чтобы выбрать тип документа, и пришлите фото или PDF."
 
 
@@ -85,8 +86,9 @@ async def got_file(message: Message, state: FSMContext, bot: Bot) -> None:
         await _analyze(message, state, bot, message.caption)
     else:
         await state.set_state(Flow.wait_question)
-        await message.answer("Принял. Теперь напишите вопрос, например: "
-                             "«Хватит ли этой справки для перевода на 2 курс?»")
+        await message.answer("Принял. Напишите вопрос, например: «Укажи значение поля «Дата выдачи»» "
+                             "— или нажмите кнопку для проверки комплектности.",
+                             reply_markup=check_keyboard())
 
 
 # ---------------------------------------------------------------- вопрос
@@ -143,10 +145,17 @@ async def _analyze(message: Message, state: FSMContext, bot: Bot, question: str)
                          {"title": resp["card"]["doc_type"], "fields": []})
 
     await wait.edit_text(format_card(resp["card"], doc_type), parse_mode="HTML")
-    await message.answer(format_answer(resp), parse_mode="HTML")
+    await message.answer(format_answer(resp, doc_type), parse_mode="HTML")
     await state.update_data(doc_type=resp["card"]["doc_type"])    # закрепляем найденный тип
     await state.set_state(Flow.wait_question)
     await message.answer("Можно задать ещё вопрос по этому документу или нажать /new.")
+
+
+@router.callback_query(F.data == "check")
+async def check_button(cb: CallbackQuery, state: FSMContext, bot: Bot) -> None:
+    await cb.answer()
+    if cb.message:
+        await _analyze(cb.message, state, bot, CHECK_QUESTION)
 
 
 # ---------------------------------------------------------------- «ловушки»: никакой тишины
