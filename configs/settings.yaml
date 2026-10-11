@@ -5,7 +5,10 @@ ocr_lang: rus
 preprocess:
   enabled: true
   deskew: true
+  flatten_illumination: true   # убирает тени и неравномерный свет (делением на оценку фона)
+  sharpen_below: 120           # резкость (дисперсия лапласиана) ниже порога -> усиливаем; 0 = выкл
   denoise: true
+  denoise_method: bilateral     # bilateral (быстро) | nlm (медленно, ~10 с/страница)
   clahe: true                  # выравнивание теней и бликов
   upscale_min_width: 1600      # если снимок уже — увеличиваем
   binarize: false              # часто ухудшает EasyOCR/Paddle, включайте по метрикам
