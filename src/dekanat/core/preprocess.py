@@ -49,34 +49,6 @@ def rotate(img: np.ndarray, angle: float) -> np.ndarray:
                           borderMode=cv2.BORDER_REPLICATE)
 
 
-def flatten_illumination(img: np.ndarray) -> np.ndarray:
-    """Убирает тени и неравномерное освещение: оцениваем «фон страницы» (морфологическое закрытие стирает
-    тёмный текст) и делим на него. Цвет сохраняется (множитель общий для каналов), поэтому печать
-    остаётся синей. Фон считаем на уменьшенной копии: быстро и достаточно точно."""
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    h, w = gray.shape
-    k = 0.25
-    small = cv2.resize(gray, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
-    size = max(15, int(min(small.shape) / 12) | 1)
-    bg = cv2.morphologyEx(small, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (size, size)))
-    bg = cv2.GaussianBlur(bg, (0, 0), size / 2)
-    bg = cv2.resize(bg, (w, h), interpolation=cv2.INTER_LINEAR).astype(np.float32)
-    gain = 255.0 / np.maximum(bg, 60.0)                     # 60: не раздуваем почти чёрные области
-    return np.clip(img.astype(np.float32) * gain[..., None], 0, 255).astype(np.uint8)
-
-
-def sharpness(gray: np.ndarray) -> float:
-    """Дисперсия лапласиана на фиксированной ширине 1000 px: чем меньше, тем размытее снимок."""
-    k = 1000.0 / gray.shape[1]
-    g = cv2.resize(gray, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
-    return float(cv2.Laplacian(g, cv2.CV_64F).var())
-
-
-def unsharp(img: np.ndarray, amount: float = 1.6, sigma: float = 1.6) -> np.ndarray:
-    blur = cv2.GaussianBlur(img, (0, 0), sigma)
-    return cv2.addWeighted(img, 1 + amount, blur, -amount, 0)
-
-
 def preprocess(img: np.ndarray, cfg: dict) -> np.ndarray:
     """Возвращает BGR-изображение (цвет нужен для поиска печати)."""
     if not cfg.get("enabled", True):
@@ -88,24 +60,14 @@ def preprocess(img: np.ndarray, cfg: dict) -> np.ndarray:
         k = min_w / out.shape[1]
         out = cv2.resize(out, None, fx=k, fy=k, interpolation=cv2.INTER_CUBIC)
 
-    if cfg.get("flatten_illumination", True):      # до оценки наклона: тени ломают бинаризацию
-        out = flatten_illumination(out)
-
     if cfg.get("deskew", True):
         gray = cv2.cvtColor(out, cv2.COLOR_BGR2GRAY)
         angle = estimate_skew_angle(gray)
         if 0.5 < abs(angle) <= 35:
             out = rotate(out, angle)
 
-    sharp_thr = cfg.get("sharpen_below", 0)        # 0 = выключено; иначе резкость усиливаем только у размытых
-    if sharp_thr and sharpness(cv2.cvtColor(out, cv2.COLOR_BGR2GRAY)) < sharp_thr:
-        out = unsharp(out)
-
     if cfg.get("denoise", True):
-        if cfg.get("denoise_method", "bilateral") == "nlm":
-            out = cv2.fastNlMeansDenoisingColored(out, None, 5, 5, 7, 21)   # ~10 с на страницу: только для экспериментов
-        else:
-            out = cv2.bilateralFilter(out, 5, 40, 40)                       # ~0.1 с, сохраняет края букв
+        out = cv2.fastNlMeansDenoisingColored(out, None, 5, 5, 7, 21)
 
     if cfg.get("clahe", True):
         lab = cv2.cvtColor(out, cv2.COLOR_BGR2LAB)

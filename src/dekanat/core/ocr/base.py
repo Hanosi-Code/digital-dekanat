@@ -29,25 +29,6 @@ class OCREngine(Protocol):
     def read(self, image: np.ndarray) -> list[Word]: ...
 
 
-def cluster_line_ids(boxes: list[tuple[int, int, int, int]]) -> list[int]:
-    """line_id для фрагментов: фрагменты на одной визуальной строке получают один id.
-    Сравнение по вертикальному центру, а не по сетке: нет разрывов на границах ячеек."""
-    order = sorted(range(len(boxes)), key=lambda i: (boxes[i][1] + boxes[i][3]) / 2)
-    ids = [0] * len(boxes)
-    line = -1
-    cy = ch = None
-    for i in order:
-        x1, y1, x2, y2 = boxes[i]
-        c, h = (y1 + y2) / 2, max(1, y2 - y1)
-        if cy is None or abs(c - cy) > 0.6 * max(h, ch):
-            line += 1
-            cy, ch = c, h
-        else:
-            cy = (cy + c) / 2
-        ids[i] = line
-    return ids
-
-
 def group_lines(words: list[Word]) -> list[Line]:
     by_line: dict[int, list[Word]] = {}
     for w in words:

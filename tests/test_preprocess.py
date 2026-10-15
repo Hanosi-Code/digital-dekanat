@@ -66,29 +66,3 @@ def test_underline_only_is_not_a_signature():
     img = np.full((1000, 1240, 3), 255, np.uint8)
     cv2.line(img, (440, 790), (700, 800), (150, 150, 150), 2)                 # слегка наклонная линейка
     assert detect_signature(img, 0.0002, [70, 770, 400, 800], []).value is False
-
-
-def test_flatten_illumination_removes_shadow_but_keeps_text_and_color():
-    from dekanat.bench.degrade import shadow
-    from dekanat.core.preprocess import flatten_illumination
-    img = page(True)
-    shadowed = shadow(img, 0.45)
-    fixed = flatten_illumination(shadowed)
-    bg_before = shadowed[20:60, 20:60].mean()          # левый верхний угол пустой страницы
-    bg_after = fixed[20:60, 20:60].mean()
-    assert bg_after > 235 > bg_before + 50             # фон снова белый
-    assert (fixed[:, :, 0].astype(int) - fixed[:, :, 2]).max() > 100   # синяя печать осталась синей
-    assert (fixed < 100).sum() > 0.8 * (img < 100).sum()                # текст не потерян
-
-
-def test_flatten_illumination_is_neutral_on_clean_page():
-    from dekanat.core.preprocess import flatten_illumination
-    img = page(True)
-    diff = np.abs(flatten_illumination(img).astype(int) - img.astype(int))
-    assert diff.mean() < 1.5
-
-
-def test_sharpness_separates_blur_from_sharp():
-    from dekanat.core.preprocess import sharpness
-    g = cv2.cvtColor(page(False), cv2.COLOR_BGR2GRAY)
-    assert sharpness(g) > 120 > sharpness(cv2.GaussianBlur(g, (0, 0), 3.0))
