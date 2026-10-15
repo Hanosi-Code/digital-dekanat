@@ -3,7 +3,7 @@ import logging
 import os
 
 from aiogram import Bot, Dispatcher
-from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.storage.memory import MemoryStorage, SimpleEventIsolation
 from aiogram.types import BotCommand
 
 from .handlers import router
@@ -13,7 +13,7 @@ async def main() -> None:
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     bot = Bot(os.environ["BOT_TOKEN"])
-    dp = Dispatcher(storage=MemoryStorage())
+    dp = Dispatcher(storage=MemoryStorage(), events_isolation=SimpleEventIsolation())
     dp.include_router(router)
 
     # на случай, если у бота когда-то был вебхук; старые необработанные апдейты сбрасываем

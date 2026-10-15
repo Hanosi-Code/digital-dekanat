@@ -55,7 +55,8 @@ class Pipeline:
         """Тяжёлая часть: выполняется один раз на документ, результат кешируется."""
         t0 = time.perf_counter()
         timings: dict[str, int] = {}
-        key = hashlib.sha256(data).hexdigest() + ":" + (doc_type or "auto")
+        content_key = hashlib.sha256(data).hexdigest()
+        key = content_key + ":" + (doc_type or "auto")
         detected = False
 
         cached = self._cache.get(key)
@@ -84,6 +85,8 @@ class Pipeline:
             timings["extract"] = int((time.perf_counter() - t2) * 1000)
 
             self._cache[key] = (card, validation, raw)
+            if detected:
+                self._cache[f"{content_key}:{doc_type}"] = (card, validation, raw)
             while len(self._cache) > self.s.cache_size:
                 self._cache.popitem(last=False)
 

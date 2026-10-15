@@ -29,7 +29,7 @@ API_URL = os.environ.get("API_URL", "http://localhost:8000")
 router = Router()
 
 CHECK_QUESTION = "Содержит ли документ все обязательные сведения по Положению?"
-HINT = "Нажмите /start, чтобы выбрать тип документа, и пришлите фото или PDF."
+HINT = "Нажмите /start, чтобы выбрать тип документа, и пришлите фото или PDF. 📎"
 
 
 class Flow(StatesGroup):
@@ -52,11 +52,12 @@ async def start(message: Message, state: FSMContext) -> None:
     try:
         types = await _doc_types()
     except httpx.HTTPError:
-        await message.answer("Сервис проверки документов сейчас недоступен. Попробуйте чуть позже.")
+        await message.answer("⚠️ Сервис проверки документов сейчас недоступен. "
+                             "Попробуйте, пожалуйста, чуть позже.")
         return
     await state.update_data(types=types)
     await message.answer(
-        "Я цифровой секретарь деканата. Помогу проверить документ и отвечу по Положению.\n"
+        "👩‍🎓 Я цифровой секретарь деканата. Помогу проверить документ и отвечу по Положению.\n"
         "Какой документ вы хотите проверить?",
         reply_markup=doc_type_keyboard(types))
 
@@ -65,12 +66,17 @@ async def start(message: Message, state: FSMContext) -> None:
 @router.callback_query(F.data.startswith("dt:"))
 async def chosen_type(cb: CallbackQuery, state: FSMContext) -> None:
     await cb.answer()                                  # сразу убираем «часики» на кнопке
+    if cb.message:
+        data = await state.get_data()
+        if data.get("selected_type_menu_id") == cb.message.message_id:
+            return
     doc_type = cb.data.split(":", 1)[1]
     await state.update_data(doc_type=None if doc_type == "auto" else doc_type,
-                            file_id=None, file_name=None)
+                            file_id=None, file_name=None,
+                            selected_type_menu_id=cb.message.message_id if cb.message else None)
     await state.set_state(Flow.wait_file)
     if cb.message:
-        await cb.message.answer("Пришлите фото, скан или PDF документа. "
+        await cb.message.answer("📎 Пришлите фото, скан или PDF документа. "
                                 "Вопрос можно написать в подписи к файлу.")
 
 
@@ -86,8 +92,8 @@ async def got_file(message: Message, state: FSMContext, bot: Bot) -> None:
         await _analyze(message, state, bot, message.caption)
     else:
         await state.set_state(Flow.wait_question)
-        await message.answer("Принял. Напишите вопрос, например: «Укажи значение поля «Дата выдачи»» "
-                             "— или нажмите кнопку для проверки комплектности.",
+        await message.answer("✅ Принял. Напишите вопрос, например: «Укажи значение поля "
+                             "«Дата выдачи»» — или нажмите кнопку для проверки комплектности.",
                              reply_markup=check_keyboard())
 
 
@@ -99,7 +105,7 @@ async def got_question(message: Message, state: FSMContext, bot: Bot) -> None:
 
 @router.message(StateFilter(Flow.wait_file), F.text & ~F.text.startswith("/"))
 async def need_file(message: Message) -> None:
-    await message.answer("Сначала пришлите документ: фото, скан (JPG/PNG) или PDF.")
+    await message.answer("📎 Сначала пришлите документ: фото, скан (JPG/PNG) или PDF.")
 
 
 # ---------------------------------------------------------------- анализ
@@ -109,7 +115,7 @@ async def _analyze(message: Message, state: FSMContext, bot: Bot, question: str)
         await message.answer(HINT)
         return
 
-    wait = await message.answer("Читаю документ…")
+    wait = await message.answer("🔍 Читаю документ…")
     try:
         buf = io.BytesIO()
         await bot.download(data["file_id"], destination=buf)
@@ -121,7 +127,7 @@ async def _analyze(message: Message, state: FSMContext, bot: Bot, question: str)
                              files={"file": (data.get("file_name") or "doc", buf.getvalue())},
                              data=form)
     except httpx.HTTPError:
-        await wait.edit_text("Сервис проверки недоступен, попробуйте позже.")
+        await wait.edit_text("⚠️ Сервис проверки недоступен, попробуйте, пожалуйста, позже.")
         return
 
     if r.status_code != 200:
@@ -131,7 +137,7 @@ async def _analyze(message: Message, state: FSMContext, bot: Bot, question: str)
             detail = ""
         log.error("API %s: %s", r.status_code, r.text[:300])
         extra = " Выберите тип документа вручную: /new." if r.status_code == 422 else ""
-        await wait.edit_text(f"Не получилось обработать документ. {detail}{extra}".strip())
+        await wait.edit_text(f"⚠️ Не получилось обработать документ. {detail}{extra}".strip())
         return
 
     resp = r.json()
@@ -148,7 +154,7 @@ async def _analyze(message: Message, state: FSMContext, bot: Bot, question: str)
     await message.answer(format_answer(resp, doc_type), parse_mode="HTML")
     await state.update_data(doc_type=resp["card"]["doc_type"])    # закрепляем найденный тип
     await state.set_state(Flow.wait_question)
-    await message.answer("Можно задать ещё вопрос по этому документу или нажать /new.")
+    await message.answer("Можно задать ещё вопрос по этому документу или нажать /new. 💬")
 
 
 @router.callback_query(F.data == "check")
@@ -176,7 +182,7 @@ async def on_error(event: ErrorEvent) -> bool:
             pass
     if target:
         try:
-            await target.answer("Что-то пошло не так. Нажмите /start и попробуйте ещё раз.")
+            await target.answer("⚠️ Что-то пошло не так. Нажмите /start и попробуйте ещё раз.")
         except Exception:  # noqa: BLE001
             pass
     return True

@@ -1,9 +1,8 @@
-"""Детерминированная логика: никаких генеративных моделей, поэтому нет выдумок.
-
+"""
 Четыре вида вопросов (по открытому набору questions.json):
   completeness   «Содержит ли документ все обязательные сведения?»  -> проверка комплектности
   decision_maker «Кто принимает окончательное решение?»              -> сотрудник деканата, rule:1.3
-  field          «Укажи значение поля «...»»                         -> значение поля, field:<ключ>
+  field          «Дата», «номер справки», «Укажи значение поля...»    -> значения полей документа
   no_info        всё остальное (стипендия, телефон, кабинет...)      -> answerable=false
 """
 from __future__ import annotations
@@ -15,12 +14,19 @@ from .config import DocType
 from .kb.retriever import tokens
 from .schemas import Card, Intent, Validation
 
-FIELD_Q_MARKERS = ("какой", "какая", "какое", "какие", "когда", "кто", "укажи", "назови", "значение",
-                   "покажи", "чему равн", "что указан", "на какой")
 COMPLETENESS_MARKERS = ("все обязательные", "всё обязательное", "обязательные сведения",
                         "комплектн", "хватит", "достаточно", "все ли", "всё ли", "в порядке",
                         "не хватает", "чего не хватает", "проверь документ", "проверить документ")
 QUOTED = re.compile(r"[«\"“](.+?)[»\"”]")
+GENERIC_FIELD_TOKENS = {"студе"}
+FIELD_QUERY_FILLER = {"кака", "како", "знач", "укаж", "назов", "пока", "поле", "поля",
+                      "докум", "справ", "какая", "какой", "какое", "какие", "каков",
+                      "значе", "укажи", "покаж", "просто"}
+BARE_FIELD_TOKENS = {"дата", "даты", "дату", "датой", "когда", "номер", "фио", "печат",
+                     "подпи", "форма", "форму", "курс", "групп", "вуз", "напр", "начал",
+                     "оконч", "фамил", "имя", "отчес"}
+FIELD_SYNONYMS = {"выдан": {"issue_date"}, "получен": {"issue_date"},
+                  "фамил": {"student_name"}, "отчес": {"student_name"}}
 
 
 def _norm(s: str) -> str:
@@ -31,24 +37,49 @@ def _norm(s: str) -> str:
 class Decision:
     intent: Intent
     field_id: str | None = None
+    field_ids: list[str] | None = None
 
 
-def match_field(question: str, doc_type: DocType) -> tuple[str | None, bool]:
-    """Возвращает (id поля, было_ли_поле_названо_явно). Явное название — в кавычках «...»."""
+def match_field(question: str, doc_type: DocType) -> list[str]:
+    """Возвращает совпавшие поля; указанная в кавычках метка должна совпадать точно."""
     quoted = QUOTED.search(question)
     if quoted:
         label = _norm(quoted.group(1))
         for f in doc_type.fields:
             if _norm(f.label) == label:
-                return f.id, True
-        return None, True               # названо поле, которого у этого типа документа нет
+                return [f.id]
+        return []                       # названо поле, которого у этого типа документа нет
     q = set(tokens(question))
-    best, best_ratio = None, 0.0
+    best_matches: list[str] = []
+    best_ratio = 0.0
     for f in doc_type.fields:
-        lt = set(tokens(f.label))
-        if lt and (r := len(q & lt) / len(lt)) >= 0.6 and r > best_ratio:
-            best, best_ratio = f.id, r
-    return best, False
+        lt = set(tokens(f.label)) - GENERIC_FIELD_TOKENS
+        overlap = len(q & lt)
+        ratio = overlap / len(lt) if lt else 0.0
+        if ratio > best_ratio:
+            best_matches, best_ratio = [f.id], ratio
+        elif ratio and ratio == best_ratio:
+            best_matches.append(f.id)
+    if best_ratio >= 0.6:
+        return best_matches
+
+    synonym_matches = {fid for term, ids in FIELD_SYNONYMS.items() if term in q for fid in ids}
+    if synonym_matches:
+        return [f.id for f in doc_type.fields if f.id in synonym_matches]
+
+    bare_terms = q - FIELD_QUERY_FILLER
+    if len(bare_terms) == 1 and bare_terms <= BARE_FIELD_TOKENS:
+        term = next(iter(bare_terms))
+        if term in {"дата", "даты", "дату", "датой", "когда"}:
+            if "справ" in q:
+                return [f.id for f in doc_type.fields if f.id == "issue_date"]
+            return [f.id for f in doc_type.fields if f.kind == "date"]
+        if term == "номер":
+            return [f.id for f in doc_type.fields if f.kind == "number"]
+        if term in {"фамил", "имя", "отче"}:
+            return [f.id for f in doc_type.fields if f.id == "student_name"]
+        return [f.id for f in doc_type.fields if term in set(tokens(f.label))]
+    return []
 
 
 def classify(question: str, doc_type: DocType) -> Decision:
@@ -63,9 +94,9 @@ def classify(question: str, doc_type: DocType) -> Decision:
         return Decision("completeness")
 
     # 3. Значение поля
-    fid, explicit = match_field(question, doc_type)
-    if fid and (explicit or any(m in ql for m in FIELD_Q_MARKERS)):
-        return Decision("field", fid)
+    field_ids = match_field(question, doc_type)
+    if field_ids:
+        return Decision("field", field_ids[0] if len(field_ids) == 1 else None, field_ids)
 
     # 4. Ни документ, ни Положение ответа не содержат
     return Decision("no_info")

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 NOT_FOUND = "не найдено"
 DECISION_MAKER = "сотрудник деканата"
-NO_INFO_TEXT = "В документе и в Положении нет информации для ответа на этот вопрос. Обратитесь в деканат."
+NO_INFO_TEXT = "К сожалению в документе и в положении нет информации для ответа на этот вопрос. Обратитесь в деканат."
 
 ValidationStatus = Literal["document_ok", "missing_fields"]
 Intent = Literal["completeness", "decision_maker", "field", "no_info"]

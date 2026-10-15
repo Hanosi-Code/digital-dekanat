@@ -4,7 +4,7 @@ from pathlib import Path
 
 from dekanat.core.answer import build_answer
 from dekanat.core.config import ROOT, load_doc_types
-from dekanat.core.reason import classify, validate
+from dekanat.core.reason import Decision, classify, validate
 from dekanat.core.schemas import Card, FieldResult
 
 DT = load_doc_types()
@@ -30,6 +30,7 @@ def test_full_document_lists_all_rules():
     assert v.status == "document_ok" and v.missing_fields == []
     assert set(v.sources) == {"rule:3.1", "rule:3.2", "rule:3.3"}
     assert a.answerable and a.value == "document_ok" and a.sources == v.sources
+    assert "✅ Есть:" in a.answer and "❌ Нет:" not in a.answer
 
 
 def test_missing_only_requirements_for_missing_items():
@@ -39,6 +40,13 @@ def test_missing_only_requirements_for_missing_items():
     assert set(v.missing_fields) == {"issue_date", "seal_present"}
     assert set(v.sources) == {"rule:3.1", "rule:3.3"}          # без 3.2: подпись на месте
     assert a.value == "missing_fields" and a.sources == v.sources
+    assert "✅ Есть:" in a.answer and "❌ Нет:" in a.answer
+
+
+def test_completeness_checklist_marks_absent_boolean_as_missing():
+    c = card(seal_present=FieldResult(value=False, status="found"))
+    a, _ = ask("Проверь комплектность", c)
+    assert "❌ Нет: Печать вуза." in a.answer
 
 
 def test_decision_maker():
@@ -51,6 +59,50 @@ def test_field_found_and_missing():
     assert a.answerable and a.value == "2026-09-05" and a.sources == ["field:issue_date"]
     a, _ = ask("Укажи значение поля «Дата выдачи».", card(issue_date=FieldResult()))
     assert not a.answerable and a.value is None and a.sources == []
+
+
+def test_bare_field_names_and_multiple_dates():
+    a, _ = ask("дата", card(
+        issue_date=FieldResult(value="2026-09-05", status="found"),
+        study_start=FieldResult(value="2024-09-01", status="found"),
+        study_end=FieldResult(value="2028-06-30", status="found"),
+    ))
+    assert a.answerable
+    assert a.value == ("Начало периода обучения: 2024-09-01; Окончание периода обучения: "
+                       "2028-06-30; Дата выдачи: 2026-09-05")
+    assert a.sources == ["field:study_start", "field:study_end", "field:issue_date"]
+
+    a, _ = ask("дата выдачи", card(issue_date=FieldResult(value="2026-09-05", status="found")))
+    assert a.value == "2026-09-05" and a.sources == ["field:issue_date"]
+
+    a, _ = ask("Какая дата выдачи?", card(issue_date=FieldResult(value="2026-09-05", status="found")))
+    assert a.value == "2026-09-05" and a.sources == ["field:issue_date"]
+
+    a, _ = ask("Когда выдана справка?", card(issue_date=FieldResult(value="2026-09-05", status="found")))
+    assert a.value == "2026-09-05" and a.sources == ["field:issue_date"]
+
+    a, _ = ask("номер", card(document_number=FieldResult(value="42", status="found")))
+    assert a.value == "42" and a.sources == ["field:document_number"]
+
+
+def test_field_with_detected_absence_is_answerable():
+    a, _ = ask("Укажи значение поля «Печать вуза».",
+               card(seal_present=FieldResult(value=False, status="found")))
+    assert a.answerable and a.value == "нет"
+    assert a.answer == "📄 Печать вуза: ❌ нет."
+    assert a.sources == ["field:seal_present"]
+
+
+def test_multiple_boolean_fields_show_presence_icons():
+    c = card(
+        seal_present=FieldResult(value=False, status="found"),
+        signature_present=FieldResult(value=True, status="found"),
+    )
+    a = build_answer(Decision("field", field_ids=["seal_present", "signature_present"]),
+                     c, SC, validate(c, SC))
+    assert a.answerable
+    assert a.value == "Печать вуза: нет; Подпись сотрудника: есть"
+    assert a.answer == "📄 Найденные значения: Печать вуза: ❌ нет; Подпись сотрудника: ✅ есть."
 
 
 def test_field_not_in_this_doc_type_is_no_info():

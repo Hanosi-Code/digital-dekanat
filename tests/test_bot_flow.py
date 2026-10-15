@@ -1,4 +1,5 @@
 """Симуляция Telegram: проверяем, что бот отвечает на КАЖДОЕ действие и не «замолкает»."""
+import asyncio
 import datetime
 import itertools
 
@@ -8,8 +9,8 @@ pytest.importorskip("aiogram")
 
 from aiogram import Bot, Dispatcher  # noqa: E402
 from aiogram.client.session.base import BaseSession  # noqa: E402
-from aiogram.fsm.storage.memory import MemoryStorage  # noqa: E402
-from aiogram.methods import AnswerCallbackQuery, EditMessageText, GetFile, SendMessage  # noqa: E402
+from aiogram.fsm.storage.memory import MemoryStorage, SimpleEventIsolation  # noqa: E402
+from aiogram.methods import EditMessageText, GetFile, SendMessage  # noqa: E402
 from aiogram.types import CallbackQuery, Chat, File, Message, PhotoSize, Update, User  # noqa: E402
 
 from dekanat.bot import handlers  # noqa: E402
@@ -69,15 +70,15 @@ class Chatter:
     def __init__(self):
         self.session = FakeSession()
         self.bot = Bot("123:ABC", session=self.session)
-        self.dp = Dispatcher(storage=MemoryStorage())
+        self.dp = Dispatcher(storage=MemoryStorage(), events_isolation=SimpleEventIsolation())
         handlers.router._parent_router = None   # роутер модульный: отвязываем от прошлого теста
         self.dp.include_router(handlers.router)
         self.u = User(id=1, is_bot=False, first_name="a")
         self.ch = Chat(id=1, type="private")
         self.n = itertools.count(1)
 
-    def _m(self, **kw):
-        i = next(self.n)
+    def _m(self, message_id=None, **kw):
+        i = message_id if message_id is not None else next(self.n)
         return Message(message_id=i, date=datetime.datetime.now(), chat=self.ch, from_user=self.u, **kw)
 
     async def send(self, upd):
@@ -92,10 +93,13 @@ class Chatter:
         ph = [PhotoSize(file_id="f", file_unique_id="u", width=10, height=10)]
         return await self.send(Update(update_id=next(self.n), message=self._m(photo=ph, caption=caption)))
 
-    async def click(self, data):
+    async def click(self, data, message_id=None, clear=True):
         cb = CallbackQuery(id=str(next(self.n)), from_user=self.u, chat_instance="c", data=data,
-                           message=self._m(text="kb"))
-        return await self.send(Update(update_id=next(self.n), callback_query=cb))
+                           message=self._m(message_id=message_id, text="kb"))
+        if clear:
+            self.session.sent.clear()
+        await self.dp.feed_update(self.bot, Update(update_id=next(self.n), callback_query=cb))
+        return list(self.session.sent)
 
 
 @pytest.fixture(autouse=True)
@@ -111,6 +115,18 @@ async def test_buttons_work_repeatedly():
     assert await c.text("/start")
     for data in ("dt:study_certificate", "dt:academic_leave_application", "dt:auto", "dt:study_certificate"):
         assert await c.click(data), f"нет отклика на {data}"          # баг: раньше молчал со 2-го раза
+
+
+@pytest.mark.asyncio
+async def test_rapid_type_button_clicks_reply_once():
+    c = Chatter()
+    c.session.sent.clear()
+    await asyncio.gather(
+        c.click("dt:study_certificate", message_id=100, clear=False),
+        c.click("dt:academic_leave_application", message_id=100, clear=False),
+    )
+    assert c.session.sent.count("AnswerCallbackQuery") == 2
+    assert sum("Пришлите фото" in sent for sent in c.session.sent) == 1
 
 
 @pytest.mark.asyncio
